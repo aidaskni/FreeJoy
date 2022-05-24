@@ -46,6 +46,10 @@ analog_data_t scaled_axis_data[MAX_AXIS_NUM];
 analog_data_t raw_axis_data[MAX_AXIS_NUM];
 analog_data_t out_axis_data[MAX_AXIS_NUM];
 
+int8_t iRotiranihKrugova[MAX_AXIS_NUM]; //za vise obrta AS5048A kod volana
+uint16_t raw_axis_data_Tmp[MAX_AXIS_NUM]; //za vise obrta AS5048A kod volana
+uint16_t raw_axis_data_Old[MAX_AXIS_NUM]; //za vise obrta AS5048A kod volana
+
 
 analog_data_t FILTER_LEVEL_1_COEF[FILTER_BUF_SIZE] = {40, 30, 15, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 analog_data_t FILTER_LEVEL_2_COEF[FILTER_BUF_SIZE] = {30, 20, 10, 10, 10, 6, 6, 4, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -922,7 +926,17 @@ void AxesProcess (dev_config_t * p_dev_config)
 					}
 					else
 					{
-						raw_axis_data[i] = tmp16;
+						
+						raw_axis_data[i] = tmp16; //ocitana dvobajtna vrednost sa senzora se dodeli u niz sirovih vrednosti -ORIGINAL
+						
+						//Milos -izmenicu ovaj deo ako je u pitanju prva osa, da dodam podrsku za volan sa vise krugova za obrtanje, npr. 900 stepeni (delim sa 2)
+						if (i==0) {
+							raw_axis_data_Tmp[i] = tmp16; //za vise obrta AS5048A kod volana //originalne vrednosti su unipolarne
+							if (raw_axis_data_Old[i] < 400 && raw_axis_data_Tmp[i] > 16000 ) iRotiranihKrugova[i]--;
+							if (raw_axis_data_Old[i] > 16000 && raw_axis_data_Tmp[i] < 400 ) iRotiranihKrugova[i]++;
+							raw_axis_data_Old[i] = raw_axis_data_Tmp[i];
+							raw_axis_data[i] = (int16_t) ( raw_axis_data_Tmp[i] + iRotiranihKrugova[i] * 16383) / 2.0;  //bipolarno, tako pravim na izlazu
+						}
 					}
 				}
 				else
